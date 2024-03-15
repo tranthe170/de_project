@@ -19,19 +19,43 @@ provider "aws" {
 }
 
 # Create our S3 bucket (Datalake)
-resource "aws_s3_bucket" "de-data-lake" {
+resource "aws_s3_bucket" "sde-data-lake" {
   bucket_prefix = var.bucket_prefix
   force_destroy = true
 }
 
-resource "aws_s3_bucket_acl" "de-data-lake-acl" {
-  bucket = aws_s3_bucket.de-data-lake.id
+resource "aws_s3_bucket_ownership_controls" "sde-data-lake" {
+  bucket = aws_s3_bucket.sde-data-lake.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "sde-data-lake" {
+  bucket = aws_s3_bucket.sde-data-lake.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+
+
+resource "aws_s3_bucket_acl" "sde-data-lake-acl" {
+
+  depends_on = [
+    aws_s3_bucket_ownership_controls.sde-data-lake,
+    aws_s3_bucket_public_access_block.sde-data-lake,
+  ]
+
+  bucket = aws_s3_bucket.sde-data-lake.id
   acl    = "public-read-write"
 }
 
 # IAM role for EC2 to connect to AWS Redshift, S3, & EMR
-resource "aws_iam_role" "de_ec2_iam_role" {
-  name = "de_ec2_iam_role"
+resource "aws_iam_role" "sde_ec2_iam_role" {
+  name = "sde_ec2_iam_role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -48,14 +72,14 @@ resource "aws_iam_role" "de_ec2_iam_role" {
   managed_policy_arns = ["arn:aws:iam::aws:policy/AmazonS3FullAccess", "arn:aws:iam::aws:policy/AmazonEMRFullAccessPolicy_v2", "arn:aws:iam::aws:policy/AmazonRedshiftAllCommandsFullAccess"]
 }
 
-resource "aws_iam_instance_profile" "de_ec2_iam_role_instance_profile" {
-  name = "de_ec2_iam_role_instance_profile"
-  role = aws_iam_role.de_ec2_iam_role.name
+resource "aws_iam_instance_profile" "sde_ec2_iam_role_instance_profile" {
+  name = "sde_ec2_iam_role_instance_profile"
+  role = aws_iam_role.sde_ec2_iam_role.name
 }
 
 # IAM role for Redshift to be able to read data from S3 via Spectrum
-resource "aws_iam_role" "de_redshift_iam_role" {
-  name = "de_redshift_iam_role"
+resource "aws_iam_role" "sde_redshift_iam_role" {
+  name = "sde_redshift_iam_role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -69,12 +93,12 @@ resource "aws_iam_role" "de_redshift_iam_role" {
     ]
   })
 
-  managed_policy_arns = ["arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess", "arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess"]
+  managed_policy_arns = ["arn:aws:iam::aws:policy/AmazonS3FullAccess", "arn:aws:iam::aws:policy/AWSGlueConsoleFullAccess"]
 }
 
 # Create security group for access to EC2 from your Anywhere
-resource "aws_security_group" "de_security_group" {
-  name        = "de_security_group"
+resource "aws_security_group" "sde_security_group" {
+  name        = "sde_security_group"
   description = "Security group to allow inbound SCP & outbound 8080 (Airflow) connections"
 
   ingress {
@@ -100,67 +124,55 @@ resource "aws_security_group" "de_security_group" {
   }
 
   tags = {
-    Name = "de_security_group"
+    Name = "sde_security_group"
   }
 }
 
 #Set up EMR
-resource "aws_emr_cluster" "de_emr_cluster" {
-  name                   = "de_emr_cluster"
-  release_label          = "emr-6.2.0"
-  applications           = ["Spark", "Hadoop"]
-  scale_down_behavior    = "TERMINATE_AT_TASK_COMPLETION"
-  service_role           = "EMR_DefaultRole"
+#Set up EMR
+resource "aws_emr_cluster" "sde_emr_cluster" {
+  name = "sde_emr_cluster"
+  release_label = "emr-6.10.0"
+  applications = ["Spark", "Hadoop"]
+  scale_down_behavior = "TERMINATE_AT_TASK_COMPLETION"
+  service_role = "EMR_DefaultRole"
   termination_protection = false
   auto_termination_policy {
-    idle_timeout = var.auto_termination_timeoff
+  idle_timeout = var.auto_termination_timeoff
   }
 
   ec2_attributes {
-    instance_profile = aws_iam_instance_profile.de_ec2_iam_role_instance_profile.id
+  instance_profile = aws_iam_instance_profile.sde_ec2_iam_role_instance_profile.id
   }
-
 
   master_instance_group {
-    instance_type  = var.instance_type
-    instance_count = 1
-    name           = "Master - 1"
-
-    ebs_config {
-      size                 = 32
-      type                 = "gp2"
-      volumes_per_instance = 2
-    }
-  }
-
-  core_instance_group {
-    instance_type  = var.instance_type
-    instance_count = 2
-    name           = "Core - 2"
-
-    ebs_config {
-      size                 = "32"
-      type                 = "gp2"
-      volumes_per_instance = 2
-    }
+  instance_type = var.instance_type
+  instance_count = 1
+  name = "Master - 1"
+  ebs_config {
+    size                 = 32
+    type                 = "gp2"
+    volumes_per_instance = 2
   }
 }
+}
+
 
 # Set up Redshift
-resource "aws_redshift_cluster" "de_redshift_cluster" {
-  cluster_identifier  = "de-redshift-cluster"
+resource "aws_redshift_cluster" "sde_redshift_cluster" {
+  cluster_identifier  = "sde-redshift-cluster"
   master_username     = var.redshift_user
   master_password     = var.redshift_password
   port                = 5439
   node_type           = var.redshift_node_type
   cluster_type        = "single-node"
-  iam_roles           = [aws_iam_role.de_redshift_iam_role.arn]
+  iam_roles           = [aws_iam_role.sde_redshift_iam_role.arn]
   skip_final_snapshot = true
 }
 
 # Create Redshift spectrum schema
 provider "redshift" {
-  host     = aws_redshift_cluster.de_redshift_cluster.dns_name
+  host     = aws_redshift_cluster.sde_redshift_cluster.dns_name
   username = var.redshift_user
   password = var.redshift_password
   database = "dev"
@@ -174,7 +186,7 @@ resource "redshift_schema" "external_from_glue_data_catalog" {
     database_name = "spectrum"
     data_catalog_source {
       region                                 = var.aws_region
-      iam_role_arns                          = [aws_iam_role.de_redshift_iam_role.arn]
+      iam_role_arns                          = [aws_iam_role.sde_redshift_iam_role.arn]
       create_external_database_if_not_exists = true
     }
   }
@@ -207,15 +219,15 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
-resource "aws_instance" "de_ec2" {
+resource "aws_instance" "sde_ec2" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
 
   key_name             = aws_key_pair.generated_key.key_name
-  security_groups      = [aws_security_group.de_security_group.name]
-  iam_instance_profile = aws_iam_instance_profile.de_ec2_iam_role_instance_profile.id
+  security_groups      = [aws_security_group.sde_security_group.name]
+  iam_instance_profile = aws_iam_instance_profile.sde_ec2_iam_role_instance_profile.id
   tags = {
-    Name = "de_ec2"
+    Name = "sde_ec2"
   }
 
   user_data = <<EOF
@@ -245,15 +257,15 @@ sudo chmod 666 /var/run/docker.sock
 sudo apt install make
 
 echo 'Clone git repo to EC2'
-cd /home/ubuntu && git clone https://github.com/tranthe170/de_project.git && cd de_project && make perms
+cd /home/ubuntu && git clone https://github.com/josephmachado/beginner_de_project.git && cd beginner_de_project && make perms
 
 echo 'Setup Airflow environment variables'
 echo "
-AIRFLOW_CONN_REDSHIFT=postgres://${var.redshift_user}:${var.redshift_password}@${aws_redshift_cluster.de_redshift_cluster.endpoint}/dev
+AIRFLOW_CONN_REDSHIFT=postgres://${var.redshift_user}:${var.redshift_password}@${aws_redshift_cluster.sde_redshift_cluster.endpoint}/dev
 AIRFLOW_CONN_POSTGRES_DEFAULT=postgres://airflow:airflow@localhost:5439/airflow
 AIRFLOW_CONN_AWS_DEFAULT=aws://?region_name=${var.aws_region}
-AIRFLOW_VAR_EMR_ID=${aws_emr_cluster.de_emr_cluster.id}
-AIRFLOW_VAR_BUCKET=${aws_s3_bucket.de-data-lake.id}
+AIRFLOW_VAR_EMR_ID=${aws_emr_cluster.sde_emr_cluster.id}
+AIRFLOW_VAR_BUCKET=${aws_s3_bucket.sde-data-lake.id}
 " > env
 
 echo 'Start Airflow containers'

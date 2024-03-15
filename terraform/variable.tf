@@ -9,14 +9,14 @@ variable "aws_region" {
 variable "bucket_prefix" {
   description = "Bucket prefix for our datalake"
   type        = string
-  default     = "de-data-lake"
+  default     = "sde-data-lake-"
 }
 
 ## Key to allow connection to our EC2 instance
 variable "key_name" {
   description = "EC2 key name"
   type        = string
-  default     = "de-key"
+  default     = "sde-key"
 }
 
 ## AWS EMR node type and auto termination time (EMR is expensive!)
@@ -36,17 +36,17 @@ variable "auto_termination_timeoff" {
 variable "redshift_user" {
   description = "AWS user name for Redshift"
   type        = string
-  default     = "de_user"
+  default     = "sde_user"
 }
 
 variable "redshift_password" {
   description = "AWS password for Redshift"
   type        = string
-  default     = "deP0ssword0987"
+  default     = "sdeP0ssword0987"
 }
 
 variable "redshift_node_type" {
-  description = "AWS Redshift node type"
+  description = "AWS Redshift node  type"
   type        = string
   default     = "dc2.large"
 }
