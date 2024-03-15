@@ -174,7 +174,7 @@ resource "redshift_schema" "external_from_glue_data_catalog" {
     database_name = "spectrum"
     data_catalog_source {
       region                                 = var.aws_region
-      iam_role_arns                          = [aws_iam_role.sde_redshift_iam_role.arn]
+      iam_role_arns                          = [aws_iam_role.de_redshift_iam_role.arn]
       create_external_database_if_not_exists = true
     }
   }
@@ -207,15 +207,15 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
-resource "aws_instance" "sde_ec2" {
+resource "aws_instance" "de_ec2" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
 
   key_name             = aws_key_pair.generated_key.key_name
-  security_groups      = [aws_security_group.sde_security_group.name]
-  iam_instance_profile = aws_iam_instance_profile.sde_ec2_iam_role_instance_profile.id
+  security_groups      = [aws_security_group.de_security_group.name]
+  iam_instance_profile = aws_iam_instance_profile.de_ec2_iam_role_instance_profile.id
   tags = {
-    Name = "sde_ec2"
+    Name = "de_ec2"
   }
 
   user_data = <<EOF
@@ -245,15 +245,15 @@ sudo chmod 666 /var/run/docker.sock
 sudo apt install make
 
 echo 'Clone git repo to EC2'
-cd /home/ubuntu && git clone https://github.com/josephmachado/beginner_de_project.git && cd beginner_de_project && make perms
+cd /home/ubuntu && git clone https://github.com/tranthe170/de_project.git && cd de_project && make perms
 
 echo 'Setup Airflow environment variables'
 echo "
-AIRFLOW_CONN_REDSHIFT=postgres://${var.redshift_user}:${var.redshift_password}@${aws_redshift_cluster.sde_redshift_cluster.endpoint}/dev
+AIRFLOW_CONN_REDSHIFT=postgres://${var.redshift_user}:${var.redshift_password}@${aws_redshift_cluster.de_redshift_cluster.endpoint}/dev
 AIRFLOW_CONN_POSTGRES_DEFAULT=postgres://airflow:airflow@localhost:5439/airflow
 AIRFLOW_CONN_AWS_DEFAULT=aws://?region_name=${var.aws_region}
-AIRFLOW_VAR_EMR_ID=${aws_emr_cluster.sde_emr_cluster.id}
-AIRFLOW_VAR_BUCKET=${aws_s3_bucket.sde-data-lake.id}
+AIRFLOW_VAR_EMR_ID=${aws_emr_cluster.de_emr_cluster.id}
+AIRFLOW_VAR_BUCKET=${aws_s3_bucket.de-data-lake.id}
 " > env
 
 echo 'Start Airflow containers'

@@ -9,7 +9,7 @@ variable "aws_region" {
 variable "bucket_prefix" {
   description = "Bucket prefix for our datalake"
   type        = string
-  default     = "de-data-lake-"
+  default     = "de-data-lake"
 }
 
 ## Key to allow connection to our EC2 instance
@@ -46,7 +46,7 @@ variable "redshift_password" {
 }
 
 variable "redshift_node_type" {
-  description = "AWS Redshift node  type"
+  description = "AWS Redshift node type"
   type        = string
   default     = "dc2.large"
 }
