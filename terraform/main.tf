@@ -257,16 +257,19 @@ sudo chmod 666 /var/run/docker.sock
 sudo apt install make
 
 echo 'Clone git repo to EC2'
-cd /home/ubuntu && git clone https://github.com/josephmachado/beginner_de_project.git && cd beginner_de_project && make perms
+cd /home/ubuntu && git clone https://github.com/tranthe170/de_project.git && cd de_project && make perms
 
 echo 'Setup Airflow environment variables'
 echo "
 AIRFLOW_CONN_REDSHIFT=postgres://${var.redshift_user}:${var.redshift_password}@${aws_redshift_cluster.sde_redshift_cluster.endpoint}/dev
 AIRFLOW_CONN_POSTGRES_DEFAULT=postgres://airflow:airflow@localhost:5439/airflow
 AIRFLOW_CONN_AWS_DEFAULT=aws://?region_name=${var.aws_region}
-AIRFLOW_VAR_EMR_ID=${aws_emr_cluster.sde_emr_cluster.id}
-AIRFLOW_VAR_BUCKET=${aws_s3_bucket.sde-data-lake.id}
 " > env
+
+echo '{
+  "AIRFLOW_VAR_EMR_ID": "${aws_emr_cluster.sde_emr_cluster.id}",
+  "AIRFLOW_VAR_BUCKET": "${aws_s3_bucket.sde-data-lake.id}"
+}' > var.json
 
 echo 'Start Airflow containers'
 make up

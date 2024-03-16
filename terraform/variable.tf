@@ -9,7 +9,7 @@ variable "aws_region" {
 variable "bucket_prefix" {
   description = "Bucket prefix for our datalake"
   type        = string
-  default     = "sde-data-lake-"
+  default     = "sde-data-lake"
 }
 
 ## Key to allow connection to our EC2 instance
