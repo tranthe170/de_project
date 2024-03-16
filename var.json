@@ -1,4 +1,0 @@
-{
-  "AIRFLOW_VAR_EMR_ID": "aws_emr_cluster.sde_emr_cluster.id",
-  "AIRFLOW_VAR_BUCKET": "aws_s3_bucket.sde_data_lake.name"
-}

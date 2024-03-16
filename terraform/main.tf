@@ -264,12 +264,9 @@ echo "
 AIRFLOW_CONN_REDSHIFT=postgres://${var.redshift_user}:${var.redshift_password}@${aws_redshift_cluster.sde_redshift_cluster.endpoint}/dev
 AIRFLOW_CONN_POSTGRES_DEFAULT=postgres://airflow:airflow@localhost:5439/airflow
 AIRFLOW_CONN_AWS_DEFAULT=aws://?region_name=${var.aws_region}
+AIRFLOW_VAR_EMR_ID=${aws_emr_cluster.sde_emr_cluster.id}
+AIRFLOW_VAR_BUCKET=${aws_s3_bucket.sde-data-lake.id}
 " > env
-
-echo '{
-  "AIRFLOW_VAR_EMR_ID": "${aws_emr_cluster.sde_emr_cluster.id}",
-  "AIRFLOW_VAR_BUCKET": "${aws_s3_bucket.sde-data-lake.id}"
-}' > var.json
 
 echo 'Start Airflow containers'
 make up
